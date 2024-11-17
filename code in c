@@ -1,0 +1,185 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Structure for contact information
+struct Contact {
+    char name[50];
+    char phoneNumber[15];
+};
+
+// Structure for a node in the binary tree
+struct btNode {
+    struct Contact contact;
+    struct btNode* left;
+    struct btNode* right;
+};
+
+// Function to create a new node
+struct btNode* createNode(char* name, char* phoneNumber) {
+    struct btNode* newNode = (struct btNode*)malloc(sizeof(struct btNode));
+    if (!newNode) {
+        printf("Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(newNode->contact.name, name);
+    strcpy(newNode->contact.phoneNumber, phoneNumber);
+    newNode->left = NULL;
+    newNode->right = NULL;
+    return newNode;
+}
+
+// Function to insert a new contact into the binary tree
+struct btNode* insert(struct btNode* root, char* name, char* phoneNumber) {
+    if (root == NULL) {
+        return createNode(name, phoneNumber);
+    }
+    if (strcmp(name, root->contact.name) < 0) {
+        root->left = insert(root->left, name, phoneNumber);
+    } else if (strcmp(name, root->contact.name) > 0) {
+        root->right = insert(root->right, name, phoneNumber);
+    }
+    return root;
+}
+
+// Function to search for a contact by name in the binary tree
+struct btNode* search(struct btNode* root, char* name) {
+    if (root == NULL || strcmp(root->contact.name, name) == 0) {
+        return root;
+    }
+    if (strcmp(name, root->contact.name) < 0) {
+        return search(root->left, name);
+    }
+    return search(root->right, name);
+}
+
+// Function for in-order traversal to display contacts in alphabetical order
+void inOrderTraversal(struct btNode* root) {
+    if (root != NULL) {
+        inOrderTraversal(root->left);
+        printf("Name: %s, Phone Number: %s\n", root->contact.name, root->contact.phoneNumber);
+        inOrderTraversal(root->right);
+    }
+}
+
+// Function to find the minimum value node in the binary tree
+struct btNode* findMin(struct btNode* root) {
+    while (root && root->left) {
+        root = root->left;
+    }
+    return root;
+}
+
+// Function to save contacts to a file
+void saveToFile(struct btNode* root, FILE* file) {
+    if (root != NULL) {
+        fwrite(&root->contact, sizeof(struct Contact), 1, file);
+        saveToFile(root->left, file);
+        saveToFile(root->right, file);
+    }
+}
+
+// Function to delete a contact by name in the binary tree
+struct btNode* deleteNode(struct btNode* root, char* name) {
+    if (root == NULL) {
+        return root;
+    }
+
+    if (strcmp(name, root->contact.name) < 0) {
+        root->left = deleteNode(root->left, name);
+    } else if (strcmp(name, root->contact.name) > 0) {
+        root->right = deleteNode(root->right, name);
+    } else {
+        // Case 1: No child
+        if (root->left == NULL && root->right == NULL) {
+            free(root);
+            return NULL;
+        }
+        // Case 2: One child
+        else if (root->left == NULL) {
+            struct btNode* temp = root->right;
+            free(root);
+            return temp;
+        } else if (root->right == NULL) {
+            struct btNode* temp = root->left;
+            free(root);
+            return temp;
+        }
+        // Case 3: Two children
+        else {
+            struct btNode* temp = findMin(root->right);
+            root->contact = temp->contact;
+            root->right = deleteNode(root->right, temp->contact.name);
+        }
+    }
+    return root;
+}
+
+// Main function 
+int main() {
+    struct btNode* root = NULL;
+    int choice;
+    char name[50], phoneNumber[15];
+
+    while (1) {
+        printf("\n--- Phone Book Menu ---\n");
+        printf("1. Add Contact\n");
+        printf("2. Search Contact\n");
+        printf("3. Delete Contact\n");
+        printf("4. Display All Contacts\n");
+        printf("5. Save Contacts to File\n");
+        printf("6. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                printf("Enter name: ");
+                scanf("%s", name);
+                printf("Enter phone number: ");
+                scanf("%s", phoneNumber);
+                root = insert(root, name, phoneNumber);
+                printf("Contact added.\n");
+                break;
+            case 2:
+                printf("Enter name to search: ");
+                scanf("%s", name);
+                struct btNode* found = search(root, name);
+                if (found) {
+                    printf("Name: %s, Phone Number: %s\n", found->contact.name, found->contact.phoneNumber);
+                } else {
+                    printf("Contact not found.\n");
+                }
+                break;
+            case 3:
+                printf("Enter name to delete: ");
+                scanf("%s", name);
+                root = deleteNode(root, name);
+                printf("Contact deleted (if it existed).\n");
+                break;
+            case 4:
+                printf("Contacts in alphabetical order:\n");
+                inOrderTraversal(root);
+                break;
+            case 5: {
+                // Save contacts to file
+                FILE* file = fopen("contacts.dat", "wb");
+                if (file == NULL) {
+                    printf("Could not open file for writing.\n");
+                } else {
+                    saveToFile(root, file);
+                    fclose(file);
+                    printf("Contacts saved successfully.\n");
+                }
+                break;
+            }
+            case 6:
+                printf("Exiting...\n");
+                exit(0);
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    }
+
+    return 0;
+}
